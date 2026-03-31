@@ -8,23 +8,31 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = {
-        "app.storage.sqlite-path=./target/test-settings-v2.db"
-})
 class SettingsControllerTest {
+
+        private static final Path TEST_DB_PATH =
+                        Path.of("target", "test-settings-" + UUID.randomUUID() + ".db");
+
+        @DynamicPropertySource
+        static void registerProperties(DynamicPropertyRegistry registry) {
+                registry.add("app.storage.sqlite-path", () -> TEST_DB_PATH.toString());
+        }
 
     @Autowired
     private MockMvc mockMvc;

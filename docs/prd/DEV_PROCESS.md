@@ -2,6 +2,21 @@
 
 ---
 
+## 2026.3.31 16:05 - "切换到标准 Flyway 数据库迁移" - 状态：已完成
+
+### 概述
+本阶段完成后端数据库初始化与迁移机制收口，移除之前绕路的自定义迁移实现，统一切换为标准 Flyway 方案，并进一步删除开发期无意义的旧结构兼容迁移。
+
+### 细节
+1. 删除 `spring.sql.init + schema.sql` 初始化路径，避免与 Flyway 重复执行。
+2. 新增 `db/migration/V1__InitSchema.sql` 作为数据库基线脚本，承接原有建表语句。
+3. 删除 `V2__MigrateModelConfigApiKeyEncryption` 兼容迁移，不再为开发阶段的旧表结构做向后兼容。
+4. 删除无关的自定义迁移框架与测试，包括空壳 `DatabaseMigrationRunner`、`DatabaseJavaMigration`、`LegacyModelConfigApiKeyEncryptionMigration` 及对应测试。
+5. 应用仅保留标准 Flyway 初始化配置，数据库结构以当前基线脚本为准。
+
+### 问题与建议
+1. 若你本机还保留 Flyway 收口前生成的旧 sqlite 数据库文件，需要手动删除后再启动；开发阶段建议直接清库，不再补兼容迁移。
+
 ## 2026.3.31 14:25 - "设置模块密钥加密与删除接口" - 状态：已完成
 
 ### 概述

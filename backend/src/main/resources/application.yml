@@ -10,10 +10,9 @@ spring:
   datasource:
     driver-class-name: org.sqlite.JDBC
     url: jdbc:sqlite:${app.storage.sqlite-path}
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:schema.sql
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
   ai:
     openai:
       api-key: ${NLA_OPENAI_API_KEY:}
