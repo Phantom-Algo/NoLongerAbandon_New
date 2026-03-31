@@ -55,6 +55,14 @@
 2. 前端UI使用ElementUI，不允许使用奇怪的蓝紫渐变色，图标必须使用svg
 3. 需要设置LOGO（LOGO图片在static/img/LOGO.png）
 
+#### 颜色
+1. 主题色：#008858
+2. 功能色：
+    1. 错误色：#d54941
+    2. 警告色：#e37318
+    3. 成功色：#56c08d
+3. 中性色：#fff
+
 ### 后端
 1. 遵循controller-service-mapper范式
 2. 使用 Mybatis Plus进行数据库访问

@@ -1,18 +1,29 @@
 <template>
-  <span class="svg-icon" v-html="content"></span>
+  <span class="svg-icon" :style="sizeStyle" v-html="content"></span>
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { computed } from 'vue'
+
+const props = withDefaults(defineProps<{
   content: string
-}>()
+  size?: number | string
+}>(), {
+  size: 18
+})
+
+const sizeStyle = computed(() => {
+  const s = typeof props.size === 'number' ? `${props.size}px` : props.size
+  return { width: s, height: s }
+})
 </script>
 
 <style scoped>
 .svg-icon {
   display: inline-flex;
-  width: 18px;
-  height: 18px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .svg-icon :deep(svg) {

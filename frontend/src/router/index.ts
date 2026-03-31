@@ -7,7 +7,7 @@ const router = createRouter({
     {
       path: '/',
       component: AppLayout,
-      redirect: '/dashboard',
+      redirect: '/word-search',
       children: [
         {
           path: 'dashboard',

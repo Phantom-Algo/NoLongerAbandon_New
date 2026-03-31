@@ -1,75 +1,111 @@
 <template>
-  <div class="dashboard-grid">
-    <el-card shadow="never" class="overview-card">
-      <template #header>
-        <div class="card-header">
-          <span>当前阶段</span>
-          <el-tag effect="plain">架构初始化</el-tag>
-        </div>
-      </template>
-      <p>已完成前后端基础骨架、数据库初始化策略、统一返回格式和页面主布局。</p>
-      <p>后续建议先落“单词搜索 -> 单词卡缓存 -> 单词本关联”这一条纵向链路。</p>
-    </el-card>
+  <div class="dashboard-page">
+    <h2 class="page-title">总览</h2>
 
-    <el-card shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span>后端约束</span>
-        </div>
-      </template>
-      <ul class="plain-list">
-        <li>严格使用 controller-service-mapper 分层</li>
-        <li>数据库初始化使用 schema.sql + IF NOT EXISTS</li>
-        <li>AI、持久化、业务模块分区隔离</li>
-      </ul>
-    </el-card>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value">0</div>
+        <div class="stat-label">搜索次数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">0</div>
+        <div class="stat-label">单词卡数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">0</div>
+        <div class="stat-label">单词本数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">0</div>
+        <div class="stat-label">AI 会话数</div>
+      </div>
+    </div>
 
-    <el-card shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span>前端约束</span>
-        </div>
-      </template>
-      <ul class="plain-list">
-        <li>页面按 views 领域拆分</li>
-        <li>统一走 AppLayout 承载侧栏与内容区</li>
-        <li>图标使用本地 SVG 资源</li>
-      </ul>
-    </el-card>
+    <div class="section-card">
+      <h3 class="section-card__title">最近搜索</h3>
+      <el-empty description="暂无搜索记录" :image-size="80" />
+    </div>
+
+    <div class="section-card">
+      <h3 class="section-card__title">开发状态</h3>
+      <div class="dev-status">
+        <el-tag effect="plain" type="success">已完成</el-tag>
+        <span>前后端基础骨架、数据库迁移、设置模块 API、前端页面布局</span>
+      </div>
+      <div class="dev-status">
+        <el-tag effect="plain" type="warning">下一步</el-tag>
+        <span>单词搜索 → 单词卡缓存 → 单词本关联</span>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.dashboard-grid {
+.dashboard-page {
+  width: 100%;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-lg);
+}
+
+.stats-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
 }
 
-.overview-card {
-  grid-column: span 3;
+.stat-card {
+  background: #fff;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg) var(--spacing-md);
+  text-align: center;
 }
 
-.card-header {
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-xs);
+}
+
+.section-card {
+  background: #fff;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+.section-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-md);
+}
+
+.dev-status {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 14px;
+  color: var(--color-text-regular);
+  margin-bottom: var(--spacing-sm);
 }
 
-.plain-list {
-  margin: 0;
-  padding-left: 18px;
-  color: #5b4c3e;
-  line-height: 1.8;
-}
-
-@media (max-width: 960px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .overview-card {
-    grid-column: span 1;
+@media (max-width: 768px) {
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>
