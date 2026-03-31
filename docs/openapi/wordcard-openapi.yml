@@ -1,0 +1,540 @@
+openapi: 3.0.3
+info:
+  title: WordCard Module API
+  version: 1.0.0
+  description: |
+    单词卡模块接口文档，覆盖英文搜索（AI 生成单词卡）、中文反查候选词、
+    单词卡详情与重新生成（整卡/单模块）、自定义模块模板 CRUD。
+    所有接口均返回统一结构：success、code、message、data。
+tags:
+  - name: WordCardSearch
+    description: 单词搜索与单词卡
+  - name: CustomSectionTemplate
+    description: 自定义模块模板管理
+paths:
+  /api/word-cards/search:
+    post:
+      tags:
+        - WordCardSearch
+      summary: 英文单词搜索
+      description: |
+        输入英文单词进行搜索。若该单词已有缓存单词卡则直接返回（search_count +1），
+        否则调用 AI 生成单词卡并缓存。可附加自定义模块。
+      operationId: searchWord
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WordSearchRequest'
+      responses:
+        '200':
+          description: 搜索成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/WordCardVO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/word-cards/{wordId}:
+    get:
+      tags:
+        - WordCardSearch
+      summary: 获取单词卡详情
+      description: 根据 wordId 获取完整的单词卡信息及所有 section。
+      operationId: getWordCard
+      parameters:
+        - $ref: '#/components/parameters/WordId'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/WordCardVO'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/word-cards/{wordId}/regenerate:
+    post:
+      tags:
+        - WordCardSearch
+      summary: 整卡重新生成
+      description: |
+        删除旧 sections，调用 AI 重新生成整张单词卡。
+        可选择附加自定义模块和额外提示词。
+      operationId: regenerateWordCard
+      parameters:
+        - $ref: '#/components/parameters/WordId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WordCardRegenerateRequest'
+      responses:
+        '200':
+          description: 重新生成成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/WordCardVO'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/word-cards/{wordId}/sections/{sectionId}/regenerate:
+    post:
+      tags:
+        - WordCardSearch
+      summary: 单模块重新生成
+      description: |
+        仅重新生成指定 section，可附加额外提示词。
+        生成完成后同步更新 word_card.raw_markdown。
+      operationId: regenerateSection
+      parameters:
+        - $ref: '#/components/parameters/WordId'
+        - $ref: '#/components/parameters/SectionId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SectionRegenerateRequest'
+      responses:
+        '200':
+          description: 重新生成成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/WordCardVO'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/word-cards/chinese-lookup:
+    post:
+      tags:
+        - WordCardSearch
+      summary: 中文反查候选词
+      description: |
+        输入中文关键词，AI 返回 3~5 个匹配的英文单词及释义。
+        用户前端选择候选词后，调用 /search 接口走英文搜索流程。
+      operationId: chineseLookup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChineseLookupRequest'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ChineseLookupVO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/word-cards/preview:
+    post:
+      tags:
+        - WordCardSearch
+      summary: 单词预览查询
+      description: 根据输入快速查询单词概要信息（不触发 AI 生成）。
+      operationId: previewWord
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - word
+              properties:
+                word:
+                  type: string
+                  description: 要查询的单词
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        description: 单词概要信息
+
+  /api/word-cards/custom-sections:
+    get:
+      tags:
+        - CustomSectionTemplate
+      summary: 查询全部自定义模块模板
+      description: 返回用户创建的所有自定义模块模板。
+      operationId: listCustomSections
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/CustomSectionTemplateVO'
+    post:
+      tags:
+        - CustomSectionTemplate
+      summary: 新增自定义模块模板
+      description: 创建一个新的自定义模块模板，搜索时可附加到单词卡生成中。
+      operationId: createCustomSection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomSectionCreateRequest'
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CustomSectionTemplateVO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/word-cards/custom-sections/{id}:
+    put:
+      tags:
+        - CustomSectionTemplate
+      summary: 更新自定义模块模板
+      operationId: updateCustomSection
+      parameters:
+        - $ref: '#/components/parameters/CustomSectionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomSectionUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CustomSectionTemplateVO'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - CustomSectionTemplate
+      summary: 删除自定义模块模板
+      operationId: deleteCustomSection
+      parameters:
+        - $ref: '#/components/parameters/CustomSectionId'
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        nullable: true
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  parameters:
+    WordId:
+      name: wordId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: 单词ID
+    SectionId:
+      name: sectionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: 模块ID
+    CustomSectionId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: 自定义模块模板ID
+
+  responses:
+    BadRequest:
+      description: 请求参数校验失败
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError:
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ApiResponseBase:
+      type: object
+      properties:
+        success:
+          type: boolean
+        code:
+          type: string
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        code:
+          type: string
+        message:
+          type: string
+        data:
+          nullable: true
+
+    WordSearchRequest:
+      type: object
+      required:
+        - word
+      properties:
+        word:
+          type: string
+          description: 英文单词
+        customSectionIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+          description: 附加的自定义模块模板 ID 列表（选填）
+
+    WordCardRegenerateRequest:
+      type: object
+      properties:
+        customSectionIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+          description: 附加的自定义模块模板 ID 列表（选填）
+        userPrompt:
+          type: string
+          description: 额外提示词（选填）
+
+    SectionRegenerateRequest:
+      type: object
+      properties:
+        userPrompt:
+          type: string
+          description: 额外提示词（选填）
+
+    ChineseLookupRequest:
+      type: object
+      required:
+        - chinese
+      properties:
+        chinese:
+          type: string
+          description: 中文关键词
+
+    WordCardVO:
+      type: object
+      properties:
+        wordId:
+          type: integer
+          format: int64
+        word:
+          type: string
+          description: 单词文本
+        searchCount:
+          type: integer
+          description: 搜索次数
+        cached:
+          type: boolean
+          description: 是否命中缓存
+        wordCard:
+          $ref: '#/components/schemas/WordCardDetailVO'
+
+    WordCardDetailVO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+          description: 卡片标题
+        rawMarkdown:
+          type: string
+          description: AI 生成的完整 Markdown 文本
+        generatedByModel:
+          type: string
+          description: 生成所用的模型名称
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/SectionVO'
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    SectionVO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        sectionKey:
+          type: string
+          description: 模块键名
+        sectionTitle:
+          type: string
+          description: 模块标题（如"基本释义"）
+        sectionContent:
+          type: string
+          description: 模块内容（Markdown 格式）
+        sortOrder:
+          type: integer
+          description: 排序序号
+        preset:
+          type: boolean
+          description: 是否为预设模块
+
+    ChineseLookupVO:
+      type: object
+      properties:
+        chinese:
+          type: string
+          description: 输入的中文关键词
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/CandidateWordVO'
+
+    CandidateWordVO:
+      type: object
+      properties:
+        word:
+          type: string
+          description: 英文单词
+        definition:
+          type: string
+          description: 简要释义
+
+    CustomSectionTemplateVO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+          description: 模块标题
+        prompt:
+          type: string
+          description: AI 提示词
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    CustomSectionCreateRequest:
+      type: object
+      required:
+        - title
+        - prompt
+      properties:
+        title:
+          type: string
+          description: 模块标题（如"词根分析"）
+        prompt:
+          type: string
+          description: AI 提示词（如"请分析这个单词的词根和词缀"）
+
+    CustomSectionUpdateRequest:
+      type: object
+      required:
+        - title
+        - prompt
+      properties:
+        title:
+          type: string
+          description: 模块标题
+        prompt:
+          type: string
+          description: AI 提示词

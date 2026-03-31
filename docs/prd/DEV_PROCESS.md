@@ -2,6 +2,73 @@
 
 ---
 
+## 2026.4.1 - "中英文单词搜索模块" - 状态：已完成
+
+### 概述
+实现完整的中英文单词搜索功能：后端 10 个 API 端点（英文搜索 + AI 单词卡生成、单词卡详情/整卡重新生成/单模块重新生成、中文反查候选词、自定义模块模板 CRUD），前端 WordSearchView 完整交互对接。新增数据库表 `custom_section_template`（V2 迁移）。
+
+### 细节
+
+#### 1. 数据库迁移
+- 新增 `V2__AddCustomSectionTemplate.sql`：创建 `custom_section_template` 表（id, title, prompt, created_at, updated_at），用于用户自定义单词卡模块模板。
+
+#### 2. 后端新增文件（共 22 个 Java 文件）
+- **Entity**：`CustomSectionTemplate`、`WordCard`、`WordCardSection`，分别映射 `custom_section_template`、`word_card`、`word_card_section` 表。
+- **Mapper**：`CustomSectionTemplateMapper`、`WordCardMapper`、`WordCardSectionMapper`，均继承 BaseMapper。
+- **DTO**：`WordSearchRequest`（word @NotBlank + customSectionIds）、`WordCardRegenerateRequest`（customSectionIds + userPrompt）、`SectionRegenerateRequest`（userPrompt）、`ChineseLookupRequest`（chinese @NotBlank）、`CustomSectionCreateRequest`（title + prompt）、`CustomSectionUpdateRequest`（同）。
+- **VO**：`WordCardVO`（wordId, word, searchCount, cached, wordCard）、`WordCardDetailVO`（id, title, rawMarkdown, generatedByModel, sections）、`SectionVO`（id, sectionKey, sectionTitle, sectionContent, sortOrder, preset）、`CustomSectionTemplateVO`（id, title, prompt, timestamps）、`ChineseLookupVO`（chinese, candidates）、`CandidateWordVO`（word, definition）。
+- **Service**：`WordCardGenerationService` 接口 + `WordCardGenerationServiceImpl`（AI 生成核心）、`CustomSectionTemplateService` 接口 + `CustomSectionTemplateServiceImpl`（自定义模块 CRUD）。
+- **Controller**：`WordCardController` 全面重写，10 个端点。
+
+#### 3. AI 生成实现
+- `WordCardGenerationServiceImpl` 从数据库读取用户配置的默认模型（`model_config` 表 `is_word_generation_default=1`），解密 API Key，手动构建 `OpenAiApi` + `OpenAiChatModel`（因 application.yml 排除了 OpenAI 自动配置）。
+- 预设 5 个模块：基本释义、音标、例句、短语、记背方法（作为常量定义）。
+- Prompt 设计：系统消息定义 AI 角色为英语学习助手，要求以 Markdown `##` 标题格式输出各模块内容，标题需与模块名称完全一致。
+- Markdown 解析：使用正则 `^##\\s+(.+)$` 按 `##` 标题拆分为 sections。
+- Spring AI 1.0.0-M6 特殊 API：`.model()` 而非 `.withModel()`，`.getText()` 而非 `.getContent()`。
+
+#### 4. 搜索与缓存逻辑
+- `WordCardQueryServiceImpl.search()`：normalize word → 查缓存 → 命中则 search_count+1 直接返回 → 未命中则调用 AI 生成 → 保存 word + word_card + sections → 返回。
+- 一词一卡策略：每个 word 只保留最新一张 word_card，重新生成时删旧存新。
+- 中文搜索不做缓存：每次调用 AI 获取候选词，返回 JSON 数组后解析。
+
+#### 5. 前端对接（新增 3 个文件 + 重写 1 个文件）
+- `types/wordcard.ts`：全部 TypeScript 接口。
+- `services/wordcard.ts`：9 个 API 调用函数，AI 类接口设置 120 秒超时。使用 `ApiResponse<T>` 泛型包装。
+- `styles/wordcard.css`：模块独立样式，覆盖搜索区域、中文候选词、单词卡（绿色渐变 header）、Markdown 内容、section 分块（hover 高亮）、自定义模块管理弹窗、重新生成弹窗、加入单词本弹窗、loading 状态。
+- `WordSearchView.vue` 完全重写：
+  - 搜索输入自动检测中文/英文（正则 `[\u4e00-\u9fa5]`）
+  - "+模块"按钮 → 弹出自定义模块管理弹窗（CRUD + checkbox 选择，选中 ID 存 localStorage）
+  - 中文流程：调用 `chinese-lookup` → 展示候选词列表 → 点击候选词触发英文搜索
+  - 英文流程：直接调用 `search`
+  - 单词卡展示：header（单词 + 搜索次数 + 缓存/新生成标签）+ section 分块渲染（ `marked` 渲染 Markdown）
+  - 每个 section hover 显示"重新生成此模块"按钮 → 弹出提示词输入
+  - "重新生成"按钮 → 弹出模块选择 + 提示词输入
+  - "加入单词本"按钮 → 弹出单词本选择列表
+
+#### 6. 文档
+- 新增 `docs/openapi/wordcard-openapi.yml`，覆盖全部 10 个端点的请求体、响应体 schema。
+- 更新 `index.css` 引入 `wordcard.css`。
+
+#### 7. 后端 API 端点一览
+- `POST /api/word-cards/preview` — 单词预览（不触发 AI）
+- `POST /api/word-cards/search` — 英文搜索（AI 生成/缓存返回）
+- `GET /api/word-cards/{wordId}` — 单词卡详情
+- `POST /api/word-cards/{wordId}/regenerate` — 整卡重新生成
+- `POST /api/word-cards/{wordId}/sections/{sectionId}/regenerate` — 单模块重新生成
+- `POST /api/word-cards/chinese-lookup` — 中文反查候选词
+- `GET /api/word-cards/custom-sections` — 查询全部自定义模块模板
+- `POST /api/word-cards/custom-sections` — 新增自定义模块模板
+- `PUT /api/word-cards/custom-sections/{id}` — 更新自定义模块模板
+- `DELETE /api/word-cards/custom-sections/{id}` — 删除自定义模块模板
+
+### 问题与建议
+1. AI 生成耗时较长（取决于模型和网络），前端已设置 120 秒超时并显示 loading 状态。
+2. 中文反查候选词每次都调用 AI，暂不做缓存（简化实现）。
+3. 用户划定注入上下文和 AI chat 功能暂未实现，后续迭代。
+
+---
+
 ## 2026.3.31 21:00 - "单词本模块增删改查 API + 前端对接" - 状态：已完成
 
 ### 概述
