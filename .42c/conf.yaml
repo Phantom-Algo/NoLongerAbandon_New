@@ -1,0 +1,3 @@
+apis:
+  docs/openapi/settings-openapi.yml:
+    alias: settings-module-api

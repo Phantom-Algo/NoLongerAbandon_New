@@ -1,0 +1,501 @@
+openapi: 3.0.3
+info:
+  title: Settings Module API
+  version: 1.0.0
+  description: |
+    设置模块接口文档，覆盖模型配置管理与用户资料维护能力。
+    所有接口均返回统一结构：success、code、message、data。
+tags:
+  - name: SettingsModels
+    description: 模型配置管理
+  - name: SettingsProfile
+    description: 用户资料设置
+paths:
+  /api/settings/models:
+    get:
+      tags:
+        - SettingsModels
+      summary: 查询模型配置列表
+      description: 按“单词生成默认模型优先，其次按 id 倒序”返回模型配置列表。
+      operationId: listSettingsModels
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelConfigListResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    code: OK
+                    message: success
+                    data:
+                      - id: 3
+                        providerName: OpenAI
+                        displayName: GPT-4o
+                        baseUrl: https://api.openai.com/v1
+                        modelName: gpt-4o
+                        apiKeyMasked: sk-t****9abc
+                        enabled: true
+                        wordGenerationDefault: true
+                        createdAt: '2026-03-31 13:20:01'
+                        updatedAt: '2026-03-31 13:22:45'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - SettingsModels
+      summary: 新增模型配置
+      description: |
+        新增模型配置。
+        - enabled 为空时默认按 true 处理。
+        - wordGenerationDefault 为 true 时，会清空其他模型的默认标记。
+        - apiKey 仅在服务端加密存储，响应中只返回脱敏后的 apiKeyMasked。
+      operationId: createSettingsModel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelConfigSaveRequest'
+            examples:
+              create:
+                value:
+                  providerName: OpenAI
+                  displayName: GPT-4o
+                  baseUrl: https://api.openai.com/v1
+                  modelName: gpt-4o
+                  apiKey: sk-test-1234567890abcd
+                  enabled: true
+                  wordGenerationDefault: true
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelConfigResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/settings/models/{id}:
+    put:
+      tags:
+        - SettingsModels
+      summary: 更新模型配置
+      description: |
+        按 id 更新模型配置。
+        - apiKey 为空或空字符串时，不会覆盖已保存的密钥。
+        - wordGenerationDefault 为 true 时，会把当前模型切换为默认模型并清除其他默认标记。
+      operationId: updateSettingsModel
+      parameters:
+        - $ref: '#/components/parameters/ModelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelConfigSaveRequest'
+            examples:
+              update:
+                value:
+                  providerName: OpenAI
+                  displayName: GPT-4o-mini
+                  baseUrl: https://api.openai.com/v1
+                  modelName: gpt-4o-mini
+                  enabled: true
+                  wordGenerationDefault: false
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelConfigResponse'
+        '400':
+          description: 参数校验失败或模型不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationFailed:
+                  value:
+                    success: false
+                    code: REQUEST_VALIDATION_FAILED
+                    message: providerName 不能为空
+                    data: null
+                modelNotFound:
+                  value:
+                    success: false
+                    code: SETTINGS_MODEL_NOT_FOUND
+                    message: 模型配置不存在
+                    data: null
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - SettingsModels
+      summary: 删除模型配置
+      description: |
+        按 id 删除模型配置。
+        如果删除的是当前默认模型，系统会自动将最新一条剩余模型配置设为默认模型。
+      operationId: deleteSettingsModel
+      parameters:
+        - $ref: '#/components/parameters/ModelId'
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptySuccessResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    code: OK
+                    message: 删除成功
+                    data: null
+        '400':
+          description: 模型不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                modelNotFound:
+                  value:
+                    success: false
+                    code: SETTINGS_MODEL_NOT_FOUND
+                    message: 模型配置不存在
+                    data: null
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/settings/models/{id}/word-generation-default:
+    put:
+      tags:
+        - SettingsModels
+      summary: 设置单词生成默认模型
+      description: 将指定模型设为单词生成功能默认模型，同时清除其他模型的默认标记。
+      operationId: setWordGenerationDefaultModel
+      parameters:
+        - $ref: '#/components/parameters/ModelId'
+      responses:
+        '200':
+          description: 设置成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelConfigResponse'
+        '400':
+          description: 模型不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                modelNotFound:
+                  value:
+                    success: false
+                    code: SETTINGS_MODEL_NOT_FOUND
+                    message: 模型配置不存在
+                    data: null
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/settings/profile:
+    get:
+      tags:
+        - SettingsProfile
+      summary: 获取用户资料
+      description: 获取当前用户资料；若数据库中尚无记录，服务端会自动创建一条默认资料。
+      operationId: getSettingsProfile
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    code: OK
+                    message: success
+                    data:
+                      id: 1
+                      nickname: 小张
+                      profileMarkdown: 我正在准备考研和找工作。
+                      allowAiReadProfile: true
+                      updatedAt: '2026-03-31 14:40:00'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - SettingsProfile
+      summary: 更新用户资料
+      description: |
+        更新用户资料。
+        所有字段均为可选；传空字符串会被标准化为 null。
+        allowAiReadProfile 未传时，保留原有值不变。
+      operationId: updateSettingsProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileUpdateRequest'
+            examples:
+              update:
+                value:
+                  nickname: 小张
+                  profileMarkdown: |-
+                    ## 我的近况
+                    - 正在做单词生成
+                    - 想让 AI 阅读我的资料
+                  allowAiReadProfile: true
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  parameters:
+    ModelId:
+      name: id
+      in: path
+      required: true
+      description: 模型配置主键 ID
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+  responses:
+    BadRequest:
+      description: 请求参数错误或业务校验失败
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            validationFailed:
+              value:
+                success: false
+                code: REQUEST_VALIDATION_FAILED
+                message: providerName 不能为空; displayName 不能为空
+                data: null
+    InternalServerError:
+      description: 服务端异常
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            serverError:
+              value:
+                success: false
+                code: INTERNAL_SERVER_ERROR
+                message: unexpected server error
+                data: null
+  schemas:
+    ModelConfigSaveRequest:
+      type: object
+      required:
+        - providerName
+        - displayName
+        - modelName
+      properties:
+        providerName:
+          type: string
+          description: 模型供应商名称，不能为空
+          example: OpenAI
+        displayName:
+          type: string
+          description: 展示名称，不能为空
+          example: GPT-4o
+        baseUrl:
+          type: string
+          nullable: true
+          description: 自定义 API Base URL，空字符串会被服务端转换为 null
+          example: https://api.openai.com/v1
+        modelName:
+          type: string
+          description: 具体模型名称，不能为空
+          example: gpt-4o
+        apiKey:
+          type: string
+          nullable: true
+          description: 接口密钥；更新时未传或为空字符串表示不覆盖已有密钥
+          example: sk-test-1234567890abcd
+        enabled:
+          type: boolean
+          nullable: true
+          description: 是否启用；为空时默认按 true 处理
+          example: true
+        wordGenerationDefault:
+          type: boolean
+          nullable: true
+          description: 是否设为单词生成功能默认模型；为空时按 false 处理
+          example: false
+    UserProfileUpdateRequest:
+      type: object
+      properties:
+        nickname:
+          type: string
+          nullable: true
+          description: 用户昵称，空字符串会被服务端转换为 null
+          example: 小张
+        profileMarkdown:
+          type: string
+          nullable: true
+          description: 用户画像 Markdown 内容，空字符串会被服务端转换为 null
+          example: 我喜欢通过例句记忆单词。
+        allowAiReadProfile:
+          type: boolean
+          nullable: true
+          description: 是否允许 AI 读取用户画像；为空时保持原值
+          example: true
+    ModelConfigVO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 3
+        providerName:
+          type: string
+          example: OpenAI
+        displayName:
+          type: string
+          example: GPT-4o
+        baseUrl:
+          type: string
+          nullable: true
+          example: https://api.openai.com/v1
+        modelName:
+          type: string
+          example: gpt-4o
+        apiKeyMasked:
+          type: string
+          nullable: true
+          description: 服务端返回的脱敏密钥，仅展示前 4 位与后 4 位
+          example: sk-t****9abc
+        enabled:
+          type: boolean
+          example: true
+        wordGenerationDefault:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          nullable: true
+          description: 创建时间字符串，格式以服务端实际序列化结果为准
+          example: '2026-03-31 13:20:01'
+        updatedAt:
+          type: string
+          nullable: true
+          description: 更新时间字符串，格式以服务端实际序列化结果为准
+          example: '2026-03-31 13:22:45'
+    UserProfileVO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        nickname:
+          type: string
+          nullable: true
+          example: 小张
+        profileMarkdown:
+          type: string
+          nullable: true
+          example: 我喜欢通过例句记忆单词。
+        allowAiReadProfile:
+          type: boolean
+          example: true
+        updatedAt:
+          type: string
+          nullable: true
+          description: 更新时间字符串，格式以服务端实际序列化结果为准
+          example: '2026-03-31 14:40:00'
+    ModelConfigResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: OK
+        message:
+          type: string
+          example: success
+        data:
+          $ref: '#/components/schemas/ModelConfigVO'
+    ModelConfigListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: OK
+        message:
+          type: string
+          example: success
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelConfigVO'
+    UserProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: OK
+        message:
+          type: string
+          example: success
+        data:
+          $ref: '#/components/schemas/UserProfileVO'
+    EmptySuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: string
+          example: OK
+        message:
+          type: string
+          example: 删除成功
+        data:
+          nullable: true
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        code:
+          type: string
+          example: REQUEST_VALIDATION_FAILED
+        message:
+          type: string
+          example: providerName 不能为空
+        data:
+          nullable: true
