@@ -1,0 +1,34 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: NoLongerAbandon
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.autoconfigure.openai.OpenAiAutoConfiguration
+  datasource:
+    driver-class-name: org.sqlite.JDBC
+    url: jdbc:sqlite:${app.storage.sqlite-path}
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+  ai:
+    openai:
+      api-key: ${NLA_OPENAI_API_KEY:}
+      base-url: ${NLA_OPENAI_BASE_URL:https://api.openai.com}
+      chat:
+        options:
+          model: ${NLA_OPENAI_MODEL:gpt-4.1-mini}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    banner: false
+
+app:
+  storage:
+    sqlite-path: ./data/nolongerabandon.db
