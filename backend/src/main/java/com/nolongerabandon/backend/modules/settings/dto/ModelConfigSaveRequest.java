@@ -22,4 +22,6 @@ public class ModelConfigSaveRequest {
     private Boolean enabled;
 
     private Boolean wordGenerationDefault;
+
+    private String completionsPath;
 }

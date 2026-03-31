@@ -26,6 +26,8 @@ public class ModelConfig {
 
     private Integer isWordGenerationDefault;
 
+    private String completionsPath;
+
     private String createdAt;
 
     private String updatedAt;

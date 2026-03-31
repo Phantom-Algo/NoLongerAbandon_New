@@ -56,6 +56,7 @@ public class SettingsServiceImpl implements SettingsService {
         modelConfig.setModelName(request.getModelName().trim());
         modelConfig.setEnabled(booleanToFlag(defaultTrue(request.getEnabled())));
         modelConfig.setIsWordGenerationDefault(booleanToFlag(Boolean.TRUE.equals(request.getWordGenerationDefault())));
+        modelConfig.setCompletionsPath(normalizeCompletionsPath(request.getCompletionsPath()));
 
         if (StringUtils.hasText(request.getApiKey())) {
             modelConfig.setApiKeyEncrypted(CryptoUtil.encrypt(request.getApiKey().trim()));
@@ -83,6 +84,8 @@ public class SettingsServiceImpl implements SettingsService {
         if (StringUtils.hasText(request.getApiKey())) {
             existingModel.setApiKeyEncrypted(CryptoUtil.encrypt(request.getApiKey().trim()));
         }
+
+        existingModel.setCompletionsPath(normalizeCompletionsPath(request.getCompletionsPath()));
 
         boolean makeDefault = Boolean.TRUE.equals(request.getWordGenerationDefault());
         existingModel.setIsWordGenerationDefault(booleanToFlag(makeDefault));
@@ -206,6 +209,7 @@ public class SettingsServiceImpl implements SettingsService {
                 .apiKeyMasked(apiKeyMasked)
                 .enabled(flagToBoolean(entity.getEnabled()))
                 .wordGenerationDefault(flagToBoolean(entity.getIsWordGenerationDefault()))
+                .completionsPath(entity.getCompletionsPath())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
@@ -234,6 +238,14 @@ public class SettingsServiceImpl implements SettingsService {
     private String normalizeNullableText(String value) {
         if (!StringUtils.hasText(value)) {
             return null;
+        }
+        return value.trim();
+    }
+
+    /** 规范化 completionsPath：为空则使用默认值 */
+    private String normalizeCompletionsPath(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "/v1/chat/completions";
         }
         return value.trim();
     }

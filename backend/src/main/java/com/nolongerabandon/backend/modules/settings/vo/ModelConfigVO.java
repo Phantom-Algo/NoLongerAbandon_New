@@ -23,6 +23,8 @@ public class ModelConfigVO {
 
     private Boolean wordGenerationDefault;
 
+    private String completionsPath;
+
     private String createdAt;
 
     private String updatedAt;

@@ -97,6 +97,9 @@
         <el-form-item label="Base URL" prop="baseUrl">
           <el-input v-model="modelForm.baseUrl" placeholder="https://api.openai.com（选填）" />
         </el-form-item>
+        <el-form-item label="Completions Path" prop="completionsPath">
+          <el-input v-model="modelForm.completionsPath" placeholder="/v1/chat/completions（选填，默认 /v1/chat/completions）" />
+        </el-form-item>
         <el-form-item label="模型名称" prop="modelName">
           <el-input v-model="modelForm.modelName" placeholder="例如：gpt-4o" />
         </el-form-item>
@@ -142,6 +145,7 @@ const modelForm = reactive({
   providerName: '',
   displayName: '',
   baseUrl: '',
+  completionsPath: '',
   modelName: '',
   apiKey: '',
   enabled: true,
@@ -183,6 +187,7 @@ function openCreateDialog() {
     providerName: '',
     displayName: '',
     baseUrl: '',
+    completionsPath: '',
     modelName: '',
     apiKey: '',
     enabled: true,
@@ -198,6 +203,7 @@ function openEditDialog(model: ModelConfigVO) {
     providerName: model.providerName,
     displayName: model.displayName,
     baseUrl: model.baseUrl || '',
+    completionsPath: model.completionsPath || '',
     modelName: model.modelName,
     apiKey: '',
     enabled: model.enabled,
@@ -216,6 +222,7 @@ async function handleSubmitModel() {
       providerName: modelForm.providerName,
       displayName: modelForm.displayName,
       baseUrl: modelForm.baseUrl || undefined,
+      completionsPath: modelForm.completionsPath || undefined,
       modelName: modelForm.modelName,
       apiKey: modelForm.apiKey || undefined,
       enabled: modelForm.enabled,

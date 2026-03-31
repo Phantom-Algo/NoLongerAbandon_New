@@ -8,6 +8,7 @@ export interface ModelConfigVO {
   apiKeyMasked: string | null
   enabled: boolean
   wordGenerationDefault: boolean
+  completionsPath: string | null
   createdAt: string
   updatedAt: string
 }
@@ -21,6 +22,7 @@ export interface ModelConfigSaveRequest {
   apiKey?: string
   enabled?: boolean
   wordGenerationDefault?: boolean
+  completionsPath?: string
 }
 
 /** 用户档案 - 响应 */

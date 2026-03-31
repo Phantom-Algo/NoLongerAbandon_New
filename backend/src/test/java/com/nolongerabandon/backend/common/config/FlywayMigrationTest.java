@@ -33,7 +33,7 @@ class FlywayMigrationTest {
 
         assertEquals(1, wordTableCount);
         assertEquals(1, flywayHistoryCount);
-        assertEquals(2, migrationCount);
+        assertEquals(3, migrationCount);
     }
 
     private void migrate(Path dbPath) {

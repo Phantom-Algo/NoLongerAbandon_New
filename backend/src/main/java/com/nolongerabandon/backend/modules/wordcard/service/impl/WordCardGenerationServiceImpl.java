@@ -132,8 +132,18 @@ public class WordCardGenerationServiceImpl implements WordCardGenerationService 
             baseUrl = "https://api.openai.com";
         }
 
+        // 使用用户配置的 completionsPath，避免 Spring AI 默认硬编码 /v1/chat/completions
+        String completionsPath = defaultModel.getCompletionsPath();
+        if (completionsPath == null || completionsPath.isBlank()) {
+            completionsPath = "/v1/chat/completions";
+        }
+
         try {
-            OpenAiApi openAiApi = new OpenAiApi(baseUrl, apiKey);
+            OpenAiApi openAiApi = OpenAiApi.builder()
+                    .baseUrl(baseUrl)
+                    .apiKey(apiKey)
+                    .completionsPath(completionsPath)
+                    .build();
             OpenAiChatOptions options = OpenAiChatOptions.builder()
                     .model(defaultModel.getModelName())
                     .temperature(0.7)
