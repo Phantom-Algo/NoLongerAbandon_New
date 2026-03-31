@@ -1,13 +1,12 @@
 package com.nolongerabandon.backend.common.util;
 
-import java.net.InetAddress;
-import java.net.NetworkInterface;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Enumeration;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -17,7 +16,10 @@ public final class CryptoUtil {
     private static final String AES_ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_TAG_LENGTH = 128;
     private static final int NONCE_LENGTH = 12;
-    private static final SecretKeySpec SECRET_KEY = new SecretKeySpec(deriveKey(), "AES");
+    private static final int AES_KEY_LENGTH = 32;
+    /** 密钥文件路径，与 SQLite 数据库同目录 */
+    private static final Path KEY_FILE_PATH = Paths.get("./data/.encryption-key");
+    private static final SecretKeySpec SECRET_KEY = new SecretKeySpec(loadOrGenerateKey(), "AES");
 
     private CryptoUtil() {
     }
@@ -60,57 +62,26 @@ public final class CryptoUtil {
         }
     }
 
-    private static byte[] deriveKey() {
+    /**
+     * 从文件加载持久化密钥；若文件不存在则生成随机密钥并写入文件。
+     * 保证同一台机器上每次启动使用相同的密钥。
+     */
+    private static byte[] loadOrGenerateKey() {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            String machineIdentity = resolveMachineIdentity();
-            return digest.digest(machineIdentity.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception ex) {
-            throw new IllegalStateException("无法派生本机加密密钥", ex);
-        }
-    }
-
-    private static String resolveMachineIdentity() {
-        String macAddress = resolveMacAddress();
-        String hostName = resolveHostName();
-        String seed = (macAddress + "|" + hostName).trim();
-        if (seed.equals("|")) {
-            return "nolongerabandon-default-machine";
-        }
-        return seed;
-    }
-
-    private static String resolveMacAddress() {
-        try {
-            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-            while (interfaces.hasMoreElements()) {
-                NetworkInterface networkInterface = interfaces.nextElement();
-                if (networkInterface.isLoopback() || networkInterface.isVirtual() || !networkInterface.isUp()) {
-                    continue;
-                }
-                byte[] hardwareAddress = networkInterface.getHardwareAddress();
-                if (hardwareAddress == null || hardwareAddress.length == 0) {
-                    continue;
-                }
-                StringBuilder builder = new StringBuilder();
-                for (byte value : hardwareAddress) {
-                    builder.append(String.format("%02X", value));
-                }
-                if (!builder.isEmpty()) {
-                    return builder.toString();
+            if (Files.exists(KEY_FILE_PATH)) {
+                byte[] storedKey = Files.readAllBytes(KEY_FILE_PATH);
+                if (storedKey.length == AES_KEY_LENGTH) {
+                    return storedKey;
                 }
             }
-            return "";
+            // 首次运行：生成 256 位随机密钥并持久化
+            byte[] newKey = new byte[AES_KEY_LENGTH];
+            new SecureRandom().nextBytes(newKey);
+            Files.createDirectories(KEY_FILE_PATH.getParent());
+            Files.write(KEY_FILE_PATH, newKey);
+            return newKey;
         } catch (Exception ex) {
-            return "";
-        }
-    }
-
-    private static String resolveHostName() {
-        try {
-            return InetAddress.getLocalHost().getHostName();
-        } catch (Exception ex) {
-            return "";
+            throw new IllegalStateException("无法加载或生成加密密钥文件: " + KEY_FILE_PATH, ex);
         }
     }
 }

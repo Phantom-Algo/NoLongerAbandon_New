@@ -2,6 +2,57 @@
 
 ---
 
+## 2026.3.31 21:00 - "单词本模块增删改查 API + 前端对接" - 状态：已完成
+
+### 概述
+实现 notebook 模块完整的后端 REST API（7 个端点）与前端 NotebookView 页面对接，覆盖单词本管理（增删改查）和单词本内单词管理（添加/移除/列表查询）。
+
+### 细节
+1. **后端分层实现**（共新增 12 个 Java 文件）：
+   - **Entity**：`VocabularyBook`、`VocabularyBookWord`，映射 `vocabulary_book` 和 `vocabulary_book_word` 表（表已在 V1 迁移中定义，无需新增迁移）。
+   - **Mapper**：`VocabularyBookMapper` 继承 BaseMapper；`VocabularyBookWordMapper` 除 BaseMapper 外新增两个 `@Select` 联表查询方法（JOIN word 表），分别按加入时间和搜索次数排序，遵守"SQL 不入侵 Service"铁律。
+   - **DTO**：`NotebookCreateRequest`（name @NotBlank + description）、`NotebookUpdateRequest`（同）、`NotebookAddWordRequest`（wordId @NotNull）。
+   - **VO**：`NotebookVO`（含 wordCount 聚合字段）、`NotebookWordVO`（含联表查询结果，使用 @NoArgsConstructor + @AllArgsConstructor 配合 MyBatis 结果映射）。
+   - **Service**：`NotebookService` 接口 + `NotebookServiceImpl` 实现。关键逻辑包括：创建时 trim + 唯一性校验、删除时 @Transactional 先删关联再删主表、添加单词校验 notebook 和 word 均存在且不重复、复用 wordcard 模块的 `WordMapper` 校验 wordId。
+   - **Controller**：`NotebookController` @ `/api/notebooks`，7 个 RESTful 端点。
+
+2. **API 端点一览**：
+   - `GET /api/notebooks` — 单词本列表（含单词数量）
+   - `POST /api/notebooks` — 创建单词本
+   - `PUT /api/notebooks/{id}` — 更新单词本
+   - `DELETE /api/notebooks/{id}` — 删除单词本（级联删除关联）
+   - `GET /api/notebooks/{id}/words?sort=time|search_count` — 单词列表（支持排序）
+   - `POST /api/notebooks/{id}/words` — 添加单词到单词本
+   - `DELETE /api/notebooks/{id}/words/{wordId}` — 从单词本移除单词
+
+3. **前端对接**（新增 2 个文件 + 重写 1 个文件）：
+   - `types/notebook.ts`：NotebookVO、NotebookWordVO、请求类型定义。
+   - `services/notebook.ts`：7 个 API 调用函数，参考 settings 模块模式。
+   - `NotebookView.vue` 完全重写：同页面状态切换（单词本列表 ↔ 单词列表），支持新建/编辑单词本（el-dialog 表单）、删除（el-popconfirm）、点击卡片进入单词列表视图（el-table + 排序切换 radio-group）、移除单词（el-popconfirm）。
+
+4. **OpenAPI 文档**：新增 `docs/openapi/notebook-openapi.yml`，覆盖全部 7 个端点的请求体、响应体 schema 及错误码说明。
+
+### 问题与建议
+1. 当前单词本内单词列表暂未实现分页，后续数据量增大后需要添加分页支持。
+2. 向单词本添加单词的功能目前依赖后端接口，前端入口（如在单词搜索页面添加到单词本的按钮）将在后续单词搜索模块中实现。
+
+---
+
+## 2026.3.31 - 修复 API Key 解密失败 Bug - 状态：已完成
+
+### 概述
+修复设置页面加载时提示"API Key 解密失败"的 Bug。根因为加密密钥基于网络接口 MAC 地址派生，macOS 网络接口枚举顺序不稳定，导致每次 JVM 重启可能派生出不同密钥。
+
+### 细节
+1. **CryptoUtil 密钥派生方式重构**：移除基于 MAC 地址 + 主机名的 `deriveKey()` 方案，改为文件持久化随机密钥 (`./data/.encryption-key`)。首次启动生成 256 位随机密钥并写入文件，后续启动直接读取，确保密钥稳定。
+2. **Service 层容错处理**：`SettingsServiceImpl.toModelConfigVO()` 中的 `CryptoUtil.decrypt()` 调用增加 try-catch，解密失败时不再抛异常导致整个模型列表加载崩溃，而是返回 `***解密失败，请重新编辑***` 的占位提示并输出 warn 日志。
+3. 密钥文件位于 `backend/data/` 目录，已被该目录下 `.gitignore` 规则排除，不会被提交到版本库。
+
+### 问题与建议
+1. 由于密钥已更换，数据库中此前用旧密钥加密的 API Key 将无法解密，需要在设置页面重新编辑对应模型并填入 API Key。
+
+---
+
 ## 2026.3.31 20:15 - "前端 UI 细节修正" - 状态：已完成
 
 ### 概述
@@ -53,7 +104,7 @@
 15. `NotebookView.vue`：单词本卡片列表 + 新建按钮（禁用态）。
 
 ### 问题与建议
-1. 设置模块前端已完整对接后端 API，但需启动后端才能实际验证 CRUD 操作。建议下一阶段联调测试。
+1. ✅ 设置模块前端已完整对接后端 API，但需启动后端才能实际验证 CRUD 操作。建议下一阶段联调测试。
 2. 单词本侧边栏下拉目前仅展示"全部单词本"静态链接，后续需对接动态数据（用户实际的单词本列表）。
 3. AI 对话气泡目前为静态骨架，后续需接入 SSE/WebFlux 流式对话、会话管理等功能。
 

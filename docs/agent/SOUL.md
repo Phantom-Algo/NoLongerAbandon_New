@@ -12,6 +12,7 @@
 1. 前端开发坚决拒绝将所有css样式挤在同一个index.css文件中！而是科学设计css样式实现样式复用和根据模块多文件划分！
 2. 前端开发也要遵守 MVC 范式
 3. SQL（无论是SQL语句还是Mybatis Plus的条件构造语句）坚决不能够入侵到service层！
+4. 如果修改了数据库表字段，需要在 backend/src/main/resources/db/migration 中完成数据库迁移工作（基于 flyway）
 
 # 关于开发日志
 你每完成一个阶段的开发都要在 docs/prd/DEV_PROCESS.md 中记录开发日志，具体要求如下：

@@ -15,10 +15,12 @@ import com.nolongerabandon.backend.modules.settings.vo.ModelConfigVO;
 import com.nolongerabandon.backend.modules.settings.vo.UserProfileVO;
 import java.util.List;
 import java.util.Objects;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+@Slf4j
 @Service
 public class SettingsServiceImpl implements SettingsService {
 
@@ -186,8 +188,13 @@ public class SettingsServiceImpl implements SettingsService {
     private ModelConfigVO toModelConfigVO(ModelConfig entity) {
         String apiKeyMasked = null;
         if (StringUtils.hasText(entity.getApiKeyEncrypted())) {
-            String plainApiKey = CryptoUtil.decrypt(entity.getApiKeyEncrypted());
-            apiKeyMasked = maskApiKey(plainApiKey);
+            try {
+                String plainApiKey = CryptoUtil.decrypt(entity.getApiKeyEncrypted());
+                apiKeyMasked = maskApiKey(plainApiKey);
+            } catch (Exception ex) {
+                log.warn("模型[{}]的 API Key 解密失败，可能是密钥已变更，请重新设置", entity.getDisplayName(), ex);
+                apiKeyMasked = "***解密失败，请重新编辑***";
+            }
         }
 
         return ModelConfigVO.builder()

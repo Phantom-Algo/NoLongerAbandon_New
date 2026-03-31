@@ -1,0 +1,338 @@
+openapi: 3.0.3
+info:
+  title: Notebook Module API
+  version: 1.0.0
+  description: |
+    单词本模块接口文档，覆盖单词本增删改查以及单词本内单词的添加与移除。
+    所有接口均返回统一结构：success、code、message、data。
+tags:
+  - name: Notebooks
+    description: 单词本管理
+  - name: NotebookWords
+    description: 单词本内单词管理
+paths:
+  /api/notebooks:
+    get:
+      tags:
+        - Notebooks
+      summary: 查询单词本列表
+      description: 按更新时间倒序返回所有单词本，包含每个单词本的单词数量。
+      operationId: listNotebooks
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/NotebookVO'
+    post:
+      tags:
+        - Notebooks
+      summary: 创建单词本
+      operationId: createNotebook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotebookCreateRequest'
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/NotebookVO'
+        '400':
+          description: |
+            请求参数校验失败或名称重复。
+            错误码：REQUEST_VALIDATION_FAILED / NOTEBOOK_NAME_DUPLICATE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/notebooks/{id}:
+    put:
+      tags:
+        - Notebooks
+      summary: 更新单词本
+      operationId: updateNotebook
+      parameters:
+        - $ref: '#/components/parameters/NotebookId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotebookUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/NotebookVO'
+        '400':
+          description: |
+            单词本不存在或名称重复。
+            错误码：NOTEBOOK_NOT_FOUND / NOTEBOOK_NAME_DUPLICATE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Notebooks
+      summary: 删除单词本
+      description: 删除单词本及其所有关联的单词关系。
+      operationId: deleteNotebook
+      parameters:
+        - $ref: '#/components/parameters/NotebookId'
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        nullable: true
+        '400':
+          description: "单词本不存在。错误码：NOTEBOOK_NOT_FOUND"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/notebooks/{id}/words:
+    get:
+      tags:
+        - NotebookWords
+      summary: 查询单词本内的单词列表
+      operationId: listNotebookWords
+      parameters:
+        - $ref: '#/components/parameters/NotebookId'
+        - name: sort
+          in: query
+          required: false
+          description: "排序方式：time（默认，按加入时间倒序）/ search_count（按搜索次数倒序）"
+          schema:
+            type: string
+            enum: [time, search_count]
+            default: time
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/NotebookWordVO'
+        '400':
+          description: "单词本不存在。错误码：NOTEBOOK_NOT_FOUND"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - NotebookWords
+      summary: 向单词本添加单词
+      operationId: addWordToNotebook
+      parameters:
+        - $ref: '#/components/parameters/NotebookId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotebookAddWordRequest'
+      responses:
+        '200':
+          description: 添加成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        nullable: true
+        '400':
+          description: |
+            单词本不存在 / 单词不存在 / 单词已在此单词本中。
+            错误码：NOTEBOOK_NOT_FOUND / NOTEBOOK_WORD_NOT_FOUND / NOTEBOOK_WORD_DUPLICATE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/notebooks/{id}/words/{wordId}:
+    delete:
+      tags:
+        - NotebookWords
+      summary: 从单词本移除单词
+      operationId: removeWordFromNotebook
+      parameters:
+        - $ref: '#/components/parameters/NotebookId'
+        - name: wordId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: 单词ID
+      responses:
+        '200':
+          description: 移除成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponseBase'
+                  - type: object
+                    properties:
+                      data:
+                        nullable: true
+        '400':
+          description: "该单词不在此单词本中。错误码：NOTEBOOK_WORD_NOT_FOUND"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  parameters:
+    NotebookId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: 单词本ID
+
+  schemas:
+    ApiResponseBase:
+      type: object
+      properties:
+        success:
+          type: boolean
+        code:
+          type: string
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        code:
+          type: string
+        message:
+          type: string
+        data:
+          nullable: true
+
+    NotebookVO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        wordCount:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    NotebookWordVO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 关联表记录ID
+        wordId:
+          type: integer
+          format: int64
+        word:
+          type: string
+          description: 单词文本
+        sourceLanguage:
+          type: string
+        searchCount:
+          type: integer
+        addedAt:
+          type: string
+          description: 加入单词本的时间
+
+    NotebookCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: 单词本名称（不可重复）
+        description:
+          type: string
+          description: 简短描述（选填）
+
+    NotebookUpdateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: 单词本名称（不可重复）
+        description:
+          type: string
+          description: 简短描述（选填）
+
+    NotebookAddWordRequest:
+      type: object
+      required:
+        - wordId
+      properties:
+        wordId:
+          type: integer
+          format: int64
+          description: 单词ID（必须已存在于 word 表中）
